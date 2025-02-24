@@ -1,1 +1,4 @@
-fastapi\nuvicorn\nrequests\nsqlite3
+fastapi
+uvicorn
+requests
+sqlite3
