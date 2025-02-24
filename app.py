@@ -103,3 +103,13 @@ def fetch_top_stocks():
         "top_stocks": results,
         "best_pick": best_stock
     }
+    from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Change this to your frontend URL if needed
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
