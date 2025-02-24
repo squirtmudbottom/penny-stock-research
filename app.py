@@ -24,9 +24,30 @@ def setup_db():
 
 setup_db()
 
+# Analyze stock performance and return sentiment & recommendation
+def analyze_stock(price, volume):
+    if price > 300:
+        sentiment = "Bullish"
+        recommendation = "Strong Buy"
+    elif price > 200:
+        sentiment = "Positive"
+        recommendation = "Buy"
+    elif price > 100:
+        sentiment = "Neutral"
+        recommendation = "Hold"
+    else:
+        sentiment = "Bearish"
+        recommendation = "Sell"
+    
+    # Adjust based on high trading volume
+    if volume > 50_000_000:
+        recommendation += " - High Volume"
+
+    return sentiment, recommendation
+
 # Fetch stock data from Alpha Vantage
 def get_stock_data(symbol):
-    API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY")  # Fetch API key from environment variables
+    API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY")
     if not API_KEY:
         return {"error": "Missing API Key"}
 
@@ -36,13 +57,18 @@ def get_stock_data(symbol):
     if response.status_code == 200:
         data = response.json()
         if "Global Quote" in data:
+            price = float(data["Global Quote"]["05. price"])
+            volume = int(data["Global Quote"]["06. volume"])
+
+            sentiment, recommendation = analyze_stock(price, volume)
+
             return {
                 "symbol": symbol,
-                "name": symbol,  # Placeholder (can be improved later)
-                "price": float(data["Global Quote"]["05. price"]),
-                "volume": int(data["Global Quote"]["06. volume"]),
-                "sentiment": "Neutral",  # Placeholder
-                "recommendation": "Hold"  # Placeholder
+                "name": symbol,  
+                "price": price,
+                "volume": volume,
+                "sentiment": sentiment,
+                "recommendation": recommendation
             }
     return {"error": f"Failed to fetch data for {symbol}"}
 
@@ -52,13 +78,18 @@ def read_root():
 
 @app.get("/top-stocks")
 def fetch_top_stocks():
-    stock_symbols = ["AAPL", "TSLA", "AMZN"]  # Add more stocks later
+    stock_symbols = ["AAPL", "TSLA", "AMZN"]  # Expandable
     results = []
+    best_stock = None
 
     for symbol in stock_symbols:
         stock_info = get_stock_data(symbol)
         if "error" not in stock_info:
             results.append(stock_info)
+
+            # Determine the best stock pick
+            if not best_stock or stock_info["recommendation"].startswith("Strong Buy"):
+                best_stock = stock_info
 
             # Store data in the database
             conn = sqlite3.connect("stocks.db")
@@ -68,5 +99,7 @@ def fetch_top_stocks():
             conn.commit()
             conn.close()
     
-    return results if results else {"error": "No stock data retrieved"}
-
+    return {
+        "top_stocks": results,
+        "best_pick": best_stock
+    }
